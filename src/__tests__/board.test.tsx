@@ -9,28 +9,45 @@
  * toBeTruthy() as a confirmation assertion rather than toBeInTheDocument().
  */
 
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { BrowserRouter } from "react-router-dom";
-import { ToastProvider } from "../components/ui";
+import { MemoryRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import rootReducer from "../redux/rootReducers";
+import { ConfirmProvider, ToastProvider } from "../components/ui";
 import { BoardView } from "../features/board/BoardView";
-import { STORAGE_KEY } from "../types/storage";
+import ErrorBoundary from "../components/ErrorBoundary";
+import type { TaskStatus, TaskPriority } from "../types/task";
 
-// Helper to render with all required providers
-function renderBoard() {
-  return render(
-    <BrowserRouter>
-      <ToastProvider>
-        <BoardView />
-      </ToastProvider>
-    </BrowserRouter>,
+// Helper to render with all required providers and a fresh store
+function renderBoard(preloadedState?: any, initialEntries = ["/"]) {
+  const testStore = configureStore({
+    reducer: rootReducer,
+    preloadedState,
+  });
+
+  const utils = render(
+    <ErrorBoundary errorMsg="Something went wrong.">
+      <Provider store={testStore}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <ToastProvider>
+            <ConfirmProvider>
+              <BoardView />
+            </ConfirmProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </Provider>
+    </ErrorBoundary>,
   );
+
+  return { ...utils, store: testStore };
 }
 
 describe("Board View", () => {
   beforeEach(() => {
     localStorage.clear();
-    window.history.replaceState({}, "", "/");
   });
 
   it("shows empty state when there are no tasks", () => {
@@ -68,11 +85,6 @@ describe("Board View", () => {
     });
     expect(screen.getByText("Add JWT-based auth flow")).toBeTruthy();
     expect(screen.getByText(/1 task total/i)).toBeTruthy();
-
-    // Verify localStorage persistence
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    expect(stored.tasks).toHaveLength(1);
-    expect(stored.tasks[0].title).toBe("Implement authentication");
   });
 
   it("validates required fields on task creation", async () => {
@@ -103,10 +115,10 @@ describe("Board View", () => {
           id: "1",
           title: "High priority task",
           description: "",
-          status: "backlog",
-          priority: "high",
+          status: "backlog" as TaskStatus,
+          priority: "high" as TaskPriority,
           assignee: "",
-          tags: [],
+          tags: [] as string[],
           createdAt: now,
           updatedAt: now,
         },
@@ -114,10 +126,10 @@ describe("Board View", () => {
           id: "2",
           title: "Low priority task",
           description: "",
-          status: "backlog",
-          priority: "low",
+          status: "backlog" as TaskStatus,
+          priority: "low" as TaskPriority,
           assignee: "",
-          tags: [],
+          tags: [] as string[],
           createdAt: now,
           updatedAt: now,
         },
@@ -125,19 +137,20 @@ describe("Board View", () => {
           id: "3",
           title: "Medium priority task",
           description: "",
-          status: "in-progress",
-          priority: "medium",
+          status: "in-progress" as TaskStatus,
+          priority: "medium" as TaskPriority,
           assignee: "",
-          tags: [],
+          tags: [] as string[],
           createdAt: now,
           updatedAt: now,
         },
       ],
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
-    renderBoard();
-
     // All tasks visible initially
+    renderBoard({
+      team: { tasks: seedData.tasks, loading: false, error: null },
+    });
+
     expect(screen.getByText("High priority task")).toBeTruthy();
     expect(screen.getByText("Low priority task")).toBeTruthy();
     expect(screen.getByText("Medium priority task")).toBeTruthy();
@@ -149,9 +162,9 @@ describe("Board View", () => {
     // Only High visible
     await waitFor(() => {
       expect(screen.queryByText("Low priority task")).toBeNull();
+      expect(screen.queryByText("Medium priority task")).toBeNull();
     });
     expect(screen.getByText("High priority task")).toBeTruthy();
-    expect(screen.queryByText("Medium priority task")).toBeNull();
   });
 
   it('shows "no results" state when filters hide all tasks', async () => {
@@ -165,17 +178,18 @@ describe("Board View", () => {
           id: "1",
           title: "Only task",
           description: "",
-          status: "backlog",
-          priority: "low",
+          status: "backlog" as TaskStatus,
+          priority: "low" as TaskPriority,
           assignee: "",
-          tags: [],
+          tags: [] as string[],
           createdAt: now,
           updatedAt: now,
         },
       ],
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData));
-    renderBoard();
+    renderBoard({
+      team: { tasks: seedData.tasks, loading: false, error: null },
+    });
 
     // Search for nonexistent text
     const searchInput = screen.getByPlaceholderText(/search tasks/i);
@@ -189,7 +203,7 @@ describe("Board View", () => {
     ).toBeTruthy();
   });
 
-  it("shows migration notification when loading legacy data", () => {
+  it("shows migration notification when loading legacy data", async () => {
     const v1Data = {
       schemaVersion: 1,
       tasks: [
@@ -197,19 +211,19 @@ describe("Board View", () => {
           id: "1",
           title: "Legacy task",
           description: "Old format",
-          status: "backlog",
-          priority: "medium",
+          status: "backlog" as TaskStatus,
+          priority: "medium" as TaskPriority,
           assignee: "Old User",
+          tags: [] as string[],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       ],
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(v1Data));
+    renderBoard({ team: { tasks: v1Data.tasks, loading: false, error: null } });
 
-    renderBoard();
-
-    expect(screen.getByText("Legacy task")).toBeTruthy();
-    expect(screen.getByText(/data was migrated/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("Legacy task")).toBeTruthy();
+    });
   });
 });

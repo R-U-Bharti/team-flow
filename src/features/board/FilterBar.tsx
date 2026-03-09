@@ -10,7 +10,7 @@ import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
 } from "../../types/task";
-import { Button, Select } from "../../components/ui";
+import { Select } from "../../components/ui";
 import type { SelectOption } from "../../components/ui";
 
 interface FilterBarProps {

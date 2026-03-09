@@ -85,7 +85,7 @@ function TaskForm({ task, open, onClose, onSubmit, onDelete }: TaskFormProps) {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // This hooks into our custom unsaved changes warning system
-  const { isDirty, setDirty, confirmDiscard } = useUnsavedChanges();
+  const { setDirty, confirmDiscard } = useUnsavedChanges();
 
   // Local state just for the tag input field before it's "added" to the main form state
   const [tagInput, setTagInput] = useState("");
