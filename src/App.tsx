@@ -9,7 +9,7 @@ function App() {
           <div className="flex items-center gap-3">
             {/* Logo */}
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-sm">
-              <img src="/logo.jpg" alt="logo" />
+              <img src="/team-flow/logo.jpg" alt="logo" />
             </div>
             <div>
               <h1 className="text-base font-bold text-slate-100 tracking-tight leading-none">
